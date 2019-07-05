@@ -21,6 +21,11 @@ public class TestMail {
 		FileWriter writer;
 		File file = new File(path);
 		writer = new FileWriter(file, false);
+		
+		String path2 = "echec.txt";
+		FileWriter writer2;
+		File file2 = new File(path2);
+		writer2 = new FileWriter(file2, false);
 
 		// TODO Auto-generated method stub
 		try {
@@ -33,11 +38,11 @@ public class TestMail {
 			while ((ligne = buff.readLine()) != null) {
 				System.out.println("===========\n" + ligne);
 				// ecriture du mail
-				writer.write(ligne + "||");
-				writer.flush();
+				// writer.write(ligne);
+
 				// séparation du nom de domaine et du user
 				StringTokenizer st = new StringTokenizer(ligne, "@");
-				String domain = null;
+				String domain = "";
 				// récupération du domain
 				while (st.hasMoreTokens()) {
 					System.out.println(st.nextToken());
@@ -46,9 +51,11 @@ public class TestMail {
 				System.out.println("===========\n" + domain);
 
 				// exécution de la commande nslookup sur le domain
+
 				ProcessBuilder builder = new ProcessBuilder("cmd.exe", "/c", "nslookup -type=mx " + domain);
 				builder.redirectErrorStream(true);
 				Process p = builder.start();
+
 				// flux de lecture sur le process builder
 				BufferedReader r = new BufferedReader(new InputStreamReader(p.getInputStream()));
 				String line;
@@ -57,54 +64,79 @@ public class TestMail {
 				line = r.readLine();
 
 				try {
+					String val = null;
 					while (line != null) {
 
-						// System.out.println("===========\n" + line);
+						System.out.println("===========\n" + line);
 						mot = line.split("\\s");
 
 						if (mot[0].equals(domain)) {
+							val = "ok";
+							writer.write(ligne);
+							writer.flush();
 							// ping vers le server mail associer au domaine
 							Socket skt = new Socket(mot[8], 25);
 							skt.setSoTimeout(10 * 1000); // durée d'attende
-							BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(skt.getInputStream()));
-							BufferedWriter bufferedWriter = new BufferedWriter(new OutputStreamWriter(skt.getOutputStream()));
-							// exécution des commande d'intérrogation 
-							send(bufferedWriter, "HELO " + domain);
+							BufferedReader bufferedReader = new BufferedReader(
+									new InputStreamReader(skt.getInputStream()));
+							BufferedWriter bufferedWriter = new BufferedWriter(
+									new OutputStreamWriter(skt.getOutputStream()));
+							// exécution des commande d'intérrogation
+							send(bufferedWriter, "EHLO " + domain);
 							send(bufferedWriter, "MAIL FROM: " + ligne);
 							send(bufferedWriter, "RCPT TO: " + ligne);
-							receive(bufferedReader, file, writer);
 							send(bufferedWriter, "quit");
-							receive(bufferedReader, file, writer);//affichage et ecriture sur fichier des reponse du serveur
-							
+
+							receive(bufferedReader, file, writer);// affichage et ecriture sur fichier des reponse du
+																	// serveur
+							skt.close();
+							System.out.println(mot[8]);
+							// break;
 							writer.write("\r\n");
 							writer.flush();
-							skt.close();
 
-							System.out.println(mot[8]);
-							break;
 						}
-						line = r.readLine();
+
+							line = r.readLine();
+						if (val == null && line==null) {
+							writer2.write(ligne);
+							writer2.write("\r\n");
+							writer2.flush();
+						}
+
 					}
+
 				} catch (SocketException exception) {
 					System.out.println("Echec connexion " + exception);
-					writer.write("Echec connexion " + exception);
+					writer.write("||Echec connexion " + exception);
 					writer.write("\r\n");
 					writer.flush();
+
 				} catch (java.net.SocketTimeoutException exception) {
 					// Output unexpected IOExceptions.
 					System.out.println("Timeout " + exception);
-					writer.write("Timeout " + exception);
+					writer.write("||Timeout " + exception);
 					writer.write("\r\n");
 					writer.flush();
+
 				} catch (java.net.UnknownHostException exception) {
 					// Output unexpected IOExceptions.
 					System.out.println("Server non reconnu " + exception);
-					writer.write("Server non reconnu " + exception);
+					writer.write("||Server non reconnu " + exception);
 					writer.write("\r\n");
 					writer.flush();
+
+				} catch (java.lang.ArrayIndexOutOfBoundsException e) {
+					writer.write("||domain " + e);
+					writer.write("\r\n");
+					writer.flush();
+
 				}
-			}			
+
+			}
+
 			writer.close();
+			writer2.close();
 			buff.close();
 		} catch (Exception e) {
 			System.out.println(e);
@@ -118,16 +150,14 @@ public class TestMail {
 	}
 
 	public static void receive(BufferedReader in, File file, FileWriter writer) throws IOException {
-		String line=null;
-		
-		while (true) {
-			line = in.readLine();
-			if(line == null) {
-				break;
-			}
+		String line = null;
+
+		line = in.readLine();
+
+		while (line != null) {
+
 			try {
-				writer.write(line);
-				writer.write("||");
+				writer.write("||" + line);
 				writer.flush();
 				System.out.println("Write success!");
 			} catch (IOException e) {
